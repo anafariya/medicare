@@ -25,26 +25,6 @@ const DOCTOR_CREDENTIALS = [
   "APRN",
 ];
 
-async function call(
-  type: 1 | 2,
-  params: Record<string, string>,
-): Promise<NPIResult[]> {
-  try {
-    const search = new URLSearchParams({
-      version: "2.1",
-      limit: "8",
-      enumeration_type: type === 1 ? "NPI-1" : "NPI-2",
-      ...params,
-    });
-    const res = await fetch(`https://npiregistry.cms.hhs.gov/api/?${search}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.results ?? [];
-  } catch {
-    return [];
-  }
-}
-
 function mapResult(r: NPIResult, type: 1 | 2): Doctor {
   if (type === 2) {
     const addr = r.addresses?.[0];
@@ -84,32 +64,23 @@ export async function searchDoctors(
 ): Promise<Doctor[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  const words = q.split(/\s+/);
-  const requests: Promise<NPIResult[]>[] = [];
 
-  if (words.length >= 2) {
-    requests.push(
-      call(1, { first_name: words[0], last_name: words.slice(1).join(" ") }),
-    );
-    requests.push(
-      call(1, { last_name: words[0], first_name: words.slice(1).join(" ") }),
-    );
-  } else {
-    requests.push(call(1, { last_name: q }));
-    requests.push(call(1, { first_name: q }));
+  let groups: { type: 1 | 2; results: NPIResult[] }[] = [];
+  try {
+    const res = await fetch(`/api/doctors?q=${encodeURIComponent(q)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    groups = data.groups ?? [];
+  } catch {
+    return [];
   }
-  requests.push(call(2, { organization_name: q }));
 
-  const all = await Promise.allSettled(requests);
   const seen = new Set<string>();
   const out: Doctor[] = [];
-  let idx = 0;
-  for (const r of all) {
-    const type = idx === 2 ? (2 as const) : (1 as const);
-    idx++;
-    if (r.status !== "fulfilled" || !r.value.length) continue;
-    for (const item of r.value) {
-      const mapped = mapResult(item, type);
+  for (const g of groups) {
+    if (!g.results.length) continue;
+    for (const item of g.results) {
+      const mapped = mapResult(item, g.type);
       if (seen.has(mapped.id) || used.includes(mapped.id)) continue;
       seen.add(mapped.id);
       out.push(mapped);
