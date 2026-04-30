@@ -18,7 +18,7 @@ export default function StepLoading() {
 
   const steps = [
     `📍 Searching plans in ZIP ${zip}…`,
-    "🏥 Loading Medicare Advantage plan database…",
+    "🏥 Loading real 2026 CMS Medicare plan data…",
     med ? "⭐ Filtering D-SNP Dual Eligible plans…" : "📋 Filtering Medicare Advantage plans…",
     "🩺 Matching your doctor networks…",
     "💊 Matching your drug formularies…",
@@ -45,8 +45,12 @@ export default function StepLoading() {
           if (!cancelled) setResults([], {});
           return;
         }
-        const planData = (await planRes.json()) as { plans: PlanResult[] };
+        const planData = (await planRes.json()) as {
+          plans: PlanResult[];
+          countyName?: string | null;
+        };
         const plans: PlanResult[] = planData.plans ?? [];
+        const countyName: string | null = planData.countyName ?? null;
 
         let quotes: Record<string, PlanQuote> = {};
         if (drgs.length && plans.length) {
@@ -78,7 +82,7 @@ export default function StepLoading() {
         // Wait long enough for the loading animation to feel intentional
         await new Promise((r) => setTimeout(r, Math.max(0, steps.length * 380 + 600)));
         if (cancelled) return;
-        setResults(plans, quotes);
+        setResults(plans, quotes, countyName);
       } catch {
         if (!cancelled) {
           setResults([], {});
@@ -98,7 +102,7 @@ export default function StepLoading() {
       <div className="lw">
         <div className="lr" />
         <div className="lt">Searching plans in your area…</div>
-        <div className="ls2">Pulling real data from CMS Medicare database</div>
+        <div className="ls2">Loading real 2026 CMS Medicare plan data…</div>
         <div className="lss">
           {steps.map((s, i) => (
             <div

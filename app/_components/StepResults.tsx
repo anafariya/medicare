@@ -10,6 +10,7 @@ type SortKey = "match" | "premium" | "oop" | "stars" | "otc" | "drugs";
 export default function StepResults() {
   const zip = useWizard((s) => s.zip);
   const state = useWizard((s) => s.state);
+  const countyName = useWizard((s) => s.countyName);
   const med = useWizard((s) => s.med);
   const otcMin = useWizard((s) => s.otcMin);
   const docs = useWizard((s) => s.docs);
@@ -27,7 +28,18 @@ export default function StepResults() {
 
   const ranked = useMemo(() => {
     const scored = plans
-      .map((p) => ({ plan: p, match: score(p, quotes[p.id], { med, otcMin, prios, weights: w, docCount: docs.length, drugCount: drgs.length }) }))
+      .map((p) => ({
+        plan: p,
+        match: score(p, quotes[p.id], {
+          med,
+          otcMin,
+          prios,
+          weights: w,
+          docCount: docs.length,
+          drugCount: drgs.length,
+          userState: state,
+        }),
+      }))
       .filter((x) => x.match > 0);
     if (sort === "premium") scored.sort((a, b) => a.plan.premiumMonthly - b.plan.premiumMonthly);
     else if (sort === "oop") scored.sort((a, b) => a.plan.moop - b.plan.moop);
@@ -36,7 +48,7 @@ export default function StepResults() {
     else if (sort === "drugs") scored.sort((a, b) => (quotes[a.plan.id]?.annualEstimate ?? Infinity) - (quotes[b.plan.id]?.annualEstimate ?? Infinity));
     else scored.sort((a, b) => b.match - a.match);
     return scored;
-  }, [plans, quotes, sort, med, otcMin, prios, w, docs.length, drgs.length]);
+  }, [plans, quotes, sort, med, otcMin, prios, w, docs.length, drgs.length, state]);
 
   const enroll = (p: PlanResult) =>
     setEnroll({
@@ -127,6 +139,7 @@ export default function StepResults() {
                 isInCompare={cmp.includes(plan.id)}
                 doctors={docs}
                 drugs={drgs}
+                countyName={countyName}
                 onCompareToggle={toggleCompare}
                 onEnroll={enroll}
               />
@@ -190,7 +203,7 @@ export default function StepResults() {
           </a>
           <div className="exc">
             <strong>How we score plans</strong>
-            Match % = doctor network (35%) + drug formulary (30%) + OTC &amp; extras (20%) + your priorities (15%).
+            Match % blends your state, drug formulary fit, OTC &amp; extras, CMS star rating, and your stated priorities. Doctor network is listed but not yet verified — confirm with the carrier before enrolling.
           </div>
         </div>
       </div>

@@ -10,6 +10,7 @@ export type PlanCardProps = {
   isInCompare: boolean;
   doctors: { id: string; n: string }[];
   drugs: Drug[];
+  countyName?: string | null;
   onCompareToggle: (planId: string) => void;
   onEnroll: (plan: PlanResult) => void;
 };
@@ -27,6 +28,7 @@ export default function PlanCard({
   isInCompare,
   doctors,
   drugs,
+  countyName,
   onCompareToggle,
   onEnroll,
 }: PlanCardProps) {
@@ -35,10 +37,19 @@ export default function PlanCard({
   const stars = renderStars(plan.starOverall ?? 0);
   const grClass = (plan.starOverall ?? 0) >= 4.5 ? "ga" : "gb";
   const tyClass = plan.isDsnp ? "dsnp" : (plan.type ?? "HMO").toLowerCase();
+  const orgLabel = plan.parentOrg ?? plan.carrier;
+  const cmsBanner = plan.contractId ? (
+    <div className="rcb">
+      <div className="rcl">✓ REAL {plan.year} CMS PLAN</div>
+      <div className="rcr">
+        Contract {plan.contractId}-{plan.planId} · {orgLabel}
+      </div>
+    </div>
+  ) : null;
   const ribbon = plan.isDsnp
     ? <div className="prb pc">⭐ Dual Special Needs Plan (D-SNP) — Medicare + Medicaid Members</div>
     : isBest
-      ? <div className="prb tc">🏆 Best Match for Your Profile</div>
+      ? <div className="prb tc">🏆 Best Match for Your Profile{countyName ? ` in ${countyName}` : ""}</div>
       : null;
 
   const drugCoverage = drugs.length > 0 && quote
@@ -64,6 +75,7 @@ export default function PlanCard({
       className={`pc2${isBest && !plan.isDsnp ? " best" : ""}${plan.isDsnp ? " dsnp" : ""}${isInCompare ? " scmp" : ""}`}
     >
       {ribbon}
+      {cmsBanner}
       <div className="pbd">
         <div className="phd">
           <div>

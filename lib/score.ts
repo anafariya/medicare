@@ -12,6 +12,7 @@ export type ScoreInput = {
   weights: Weights;
   docCount: number;
   drugCount: number;
+  userState: string;
 };
 
 const has = (prios: Priority[], p: Priority) => prios.includes(p);
@@ -21,10 +22,13 @@ export function score(
   quote: PlanQuote | undefined,
   input: ScoreInput,
 ): number {
-  let s = 60;
+  let s = 50;
+
+  if (input.userState && plan.state === input.userState) s += 25;
+  else if (plan.state === "NATIONAL") s += 8;
 
   if (input.med === true && plan.isDsnp) s += 25;
-  else if (input.med === true && !plan.isDsnp) s -= 12;
+  else if (input.med === true && !plan.isDsnp) s -= 15;
   else if (input.med === false && plan.isDsnp) return 0;
 
   const otc = plan.otc ?? 0;
@@ -87,5 +91,5 @@ export function score(
     }
   }
   s += (plan.starOverall ?? 3) * 1.5;
-  return Math.min(99, Math.max(60, Math.round(s)));
+  return Math.min(99, Math.max(50, Math.round(s)));
 }

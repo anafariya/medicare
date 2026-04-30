@@ -23,11 +23,16 @@ export async function GET(request: Request) {
   const medicaid = medicaidStr === null ? null : medicaidStr === "true";
 
   try {
-    const { plans, state, countyFips } = await findPlansByZip(zip, year, medicaid);
+    const { plans, state, countyFips, countyName } = await findPlansByZip(
+      zip,
+      year,
+      medicaid,
+    );
     return NextResponse.json(
       {
         zip,
         countyFips,
+        countyName,
         state,
         year,
         count: plans.length,

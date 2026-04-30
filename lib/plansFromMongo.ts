@@ -34,6 +34,8 @@ function toResult(p: PlanDoc): PlanResult {
     otcCats: [],
     extras: [],
     whyChoose: [],
+    parentOrg: p.parentOrg ?? null,
+    countyName: p.countyName ?? null,
   };
 }
 
@@ -41,7 +43,12 @@ export async function findPlansByZip(
   zip: string,
   year: number,
   medicaid: boolean | null,
-): Promise<{ plans: PlanResult[]; state: string; countyFips: string }> {
+): Promise<{
+  plans: PlanResult[];
+  state: string;
+  countyFips: string;
+  countyName: string | null;
+}> {
   const state = zipToState(zip);
   const col = await plansCol();
 
@@ -82,15 +89,17 @@ export async function findPlansByZip(
 
   const seen = new Set<string>();
   const plans: PlanResult[] = [];
+  let countyName: string | null = null;
   for (const d of docs) {
     const id = planIdFor(d);
     if (seen.has(id)) continue;
     seen.add(id);
+    if (!countyName && d.countyName) countyName = d.countyName;
     plans.push(toResult(d));
   }
   plans.sort((a, b) => (b.starOverall ?? 0) - (a.starOverall ?? 0));
 
-  return { plans, state, countyFips: "00000" };
+  return { plans, state, countyFips: "00000", countyName };
 }
 
 export async function findPlansByIds(

@@ -57,6 +57,8 @@ export type PlanResult = {
   otcCats?: string[];
   extras?: string[];
   whyChoose?: string[];
+  parentOrg?: string | null;
+  countyName?: string | null;
 };
 
 export type DrugQuote = {
@@ -93,6 +95,7 @@ export type WizardState = {
   yr: number;
   state: string;
   countyFips: string | null;
+  countyName: string | null;
   med: boolean | null;
   otcMin: number;
   docs: Doctor[];
@@ -121,7 +124,11 @@ export type WizardState = {
   setMailOrder: (v: boolean) => void;
   goStep: (n: 1 | 2 | 3 | 4 | 5 | 6) => void;
   setLoading: (v: boolean) => void;
-  setResults: (plans: PlanResult[], quotes: Record<string, PlanQuote>) => void;
+  setResults: (
+    plans: PlanResult[],
+    quotes: Record<string, PlanQuote>,
+    countyName?: string | null,
+  ) => void;
   toggleCompare: (id: string) => void;
   clearCompare: () => void;
   setEnroll: (c: EnrollContext | null) => void;
@@ -166,6 +173,7 @@ const initial: Omit<
   yr: 2026,
   state: "",
   countyFips: null,
+  countyName: null,
   med: null,
   otcMin: 1000,
   docs: [],
@@ -240,7 +248,13 @@ export const useWizard = create<WizardState>()(
 
       goStep: (n) => set({ step: n }),
       setLoading: (v) => set({ loading: v }),
-      setResults: (plans, quotes) => set({ plans, quotes, loading: false }),
+      setResults: (plans, quotes, countyName) =>
+        set({
+          plans,
+          quotes,
+          loading: false,
+          ...(countyName !== undefined ? { countyName } : {}),
+        }),
 
       toggleCompare: (id) => {
         const set2 = new Set(get().cmp);
@@ -262,6 +276,7 @@ export const useWizard = create<WizardState>()(
         yr: s.yr,
         state: s.state,
         countyFips: s.countyFips,
+        countyName: s.countyName,
         med: s.med,
         otcMin: s.otcMin,
         docs: s.docs,
