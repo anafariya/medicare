@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:mongo": "node scripts/seedMongo.mjs",
-    "reindex:mongo": "node scripts/seedMongo.mjs --reindex"
+    "reindex:mongo": "node scripts/seedMongo.mjs --reindex",
+    "seed:formulary": "node scripts/seedFormulary.mjs"
   },
   "dependencies": {
     "csv-parse": "5.5.6",
