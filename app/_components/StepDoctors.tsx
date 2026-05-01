@@ -6,6 +6,7 @@ import { searchDoctors } from "@/lib/npi";
 
 export default function StepDoctors() {
   const docs = useWizard((s) => s.docs);
+  const state = useWizard((s) => s.state);
   const addDoctor = useWizard((s) => s.addDoctor);
   const removeDoctor = useWizard((s) => s.removeDoctor);
   const goStep = useWizard((s) => s.goStep);
@@ -29,14 +30,14 @@ export default function StepDoctors() {
     setOpen(true);
     debounceRef.current = setTimeout(async () => {
       const used = docs.map((d) => d.id);
-      const results = await searchDoctors(q, used);
+      const results = await searchDoctors(q, used, state || undefined);
       setHits(results);
       setLoading(false);
     }, 250);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [q, docs]);
+  }, [q, docs, state]);
 
   const pick = (d: Doctor) => {
     addDoctor(d);
@@ -184,6 +185,16 @@ export default function StepDoctors() {
             ))}
           </div>
         )}
+        <div style={{ marginTop: 8, fontSize: 13, color: "var(--i2)" }}>
+          Don&apos;t see your doctor?{" "}
+          <a
+            onClick={() => goStep(4)}
+            style={{ color: "var(--teal)", cursor: "pointer", textDecoration: "underline" }}
+          >
+            Skip this step
+          </a>{" "}
+          — we&apos;ll verify network at enrollment.
+        </div>
         <div className="cal bl">
           <span className="cali">💡</span>
           <div>

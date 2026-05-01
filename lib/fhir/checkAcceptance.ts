@@ -11,8 +11,50 @@ const TTL_MS = 24 * 60 * 60 * 1000;
 
 export type AcceptanceResult = Pick<
   DoctorPlanAcceptanceDoc,
-  "inNetwork" | "source" | "reason" | "checkedAt"
+  | "inNetwork"
+  | "source"
+  | "reason"
+  | "checkedAt"
+  | "acceptingPatients"
+  | "practiceLocations"
 >;
+
+const NEWPT_EXT = "http://hl7.org/fhir/us/davinci-pdex-plan-net/StructureDefinition/newpatients";
+
+type RoleShape = {
+  extension?: { url?: string; extension?: { url?: string; valueCodeableConcept?: { coding?: { code?: string; system?: string }[] } }[]; valueCodeableConcept?: { coding?: { code?: string; system?: string }[] } }[];
+  location?: { display?: string; reference?: string }[];
+};
+
+function extractAcceptingPatients(role: FhirResource): "yes" | "no" | "existing" | "unknown" {
+  const extensions = (role as unknown as RoleShape).extension ?? [];
+  for (const ext of extensions) {
+    if (ext.url !== NEWPT_EXT) continue;
+    const inner = ext.extension ?? [];
+    for (const sub of inner) {
+      const coding = sub.valueCodeableConcept?.coding ?? [];
+      for (const c of coding) {
+        if (c.code === "newpt") return "yes";
+        if (c.code === "nopt") return "no";
+        if (c.code === "existptonly") return "existing";
+      }
+    }
+    const coding = ext.valueCodeableConcept?.coding ?? [];
+    for (const c of coding) {
+      if (c.code === "newpt") return "yes";
+      if (c.code === "nopt") return "no";
+      if (c.code === "existptonly") return "existing";
+    }
+  }
+  return "unknown";
+}
+
+function extractPracticeLocations(role: FhirResource): string[] {
+  const locations = (role as unknown as RoleShape).location ?? [];
+  return locations
+    .map((l) => l.display)
+    .filter((d): d is string => typeof d === "string" && d.trim().length > 0);
+}
 
 export type AcceptanceQuery = {
   npi: string;
@@ -40,6 +82,8 @@ async function readCache(q: AcceptanceQuery): Promise<AcceptanceResult | null> {
     source: hit.source,
     reason: hit.reason ?? null,
     checkedAt: hit.checkedAt,
+    acceptingPatients: hit.acceptingPatients ?? null,
+    practiceLocations: hit.practiceLocations ?? [],
   };
 }
 
@@ -56,6 +100,8 @@ async function writeCache(q: AcceptanceQuery, r: AcceptanceResult): Promise<void
         inNetwork: r.inNetwork,
         source: r.source,
         reason: r.reason ?? null,
+        acceptingPatients: r.acceptingPatients ?? null,
+        practiceLocations: r.practiceLocations ?? [],
         checkedAt: r.checkedAt,
         ttlExpiresAt: new Date(Date.now() + TTL_MS),
       },
@@ -167,7 +213,24 @@ export async function checkAcceptance(q: AcceptanceQuery): Promise<AcceptanceRes
         1,
       );
       if (roles.length > 0) {
-        result = { inNetwork: "yes", source: "fhir", reason: null, checkedAt: new Date() };
+        // Combine across all matching roles: prefer "yes" → "existing" → "no" → "unknown"
+        // for accepting-patients; union all distinct practice locations.
+        const ranks = { yes: 3, existing: 2, no: 1, unknown: 0 } as const;
+        let bestAccepting: "yes" | "no" | "existing" | "unknown" = "unknown";
+        const locs = new Set<string>();
+        for (const role of roles) {
+          const a = extractAcceptingPatients(role);
+          if (ranks[a] > ranks[bestAccepting]) bestAccepting = a;
+          for (const loc of extractPracticeLocations(role)) locs.add(loc);
+        }
+        result = {
+          inNetwork: "yes",
+          source: "fhir",
+          reason: null,
+          acceptingPatients: bestAccepting,
+          practiceLocations: Array.from(locs).slice(0, 4),
+          checkedAt: new Date(),
+        };
       } else {
         result = {
           inNetwork: "no",

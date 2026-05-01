@@ -35,6 +35,10 @@ export default function PlanCard({
 }: PlanCardProps) {
   const planKey = `${plan.contractId}-${plan.planId}-${plan.segmentId}`;
   const acceptance = useDoctorAcceptance(doctors, planKey);
+  const npiDoctors = doctors.filter((d) => !!d.npi);
+  const allDoctorsInNetwork =
+    npiDoctors.length > 0 &&
+    npiDoctors.every((d) => acceptance[d.npi!]?.inNetwork === "yes");
   const otc = plan.otc ?? 0;
   const otcMonthly = Math.round(otc / 12);
   const stars = renderStars(plan.starOverall ?? 0);
@@ -51,9 +55,11 @@ export default function PlanCard({
   ) : null;
   const ribbon = plan.isDsnp
     ? <div className="prb pc">⭐ Dual Special Needs Plan (D-SNP) — Medicare + Medicaid Members</div>
-    : isBest
-      ? <div className="prb tc">🏆 Best Match for Your Profile{countyName ? ` in ${countyName}` : ""}</div>
-      : null;
+    : allDoctorsInNetwork
+      ? <div className="prb tc">✓ All your doctors are in-network</div>
+      : isBest
+        ? <div className="prb tc">🏆 Best Match for Your Profile{countyName ? ` in ${countyName}` : ""}</div>
+        : null;
 
   const drugCoverage = drugs.length > 0 && quote
     ? quote.drugs.map((d) => (
@@ -200,14 +206,56 @@ export default function PlanCard({
                     );
                     if (entry.inNetwork === "yes") {
                       anyVerified = true;
+                      const accepting = entry.acceptingPatients;
+                      const acceptingLabel =
+                        accepting === "yes"
+                          ? "accepting new patients"
+                          : accepting === "no"
+                            ? "not accepting new patients"
+                            : accepting === "existing"
+                              ? "existing patients only"
+                              : null;
+                      const acceptingColor =
+                        accepting === "yes"
+                          ? "#0f7c4a"
+                          : accepting === "no"
+                            ? "#9a4a2a"
+                            : "#6b6b6b";
+                      const loc = entry.practiceLocations?.[0];
                       return (
                         <span
                           key={d.id}
                           className="cp par"
                           title={`Verified live against ${plan.carrier}'s public provider directory (CMS-9115-F).`}
+                          style={{ flexDirection: "column", alignItems: "flex-start", gap: 2 }}
                         >
-                          • {label}
-                          {verifiedTag("ok", `✓ in-network · ${plan.carrier}`)}
+                          <span>
+                            • {label}
+                            {verifiedTag("ok", `✓ in-network · ${plan.carrier}`)}
+                          </span>
+                          {(acceptingLabel || loc) && (
+                            <span
+                              style={{
+                                fontSize: "0.78em",
+                                opacity: 0.85,
+                                marginLeft: 12,
+                                display: "flex",
+                                gap: 8,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              {acceptingLabel && (
+                                <span style={{ color: acceptingColor }}>
+                                  {acceptingLabel}
+                                </span>
+                              )}
+                              {loc && (
+                                <span style={{ color: "#666" }}>
+                                  · {loc}
+                                </span>
+                              )}
+                            </span>
+                          )}
                         </span>
                       );
                     }

@@ -153,6 +153,8 @@ export type DoctorPlanAcceptanceDoc = {
   inNetwork: "yes" | "no" | "unknown";
   source: "fhir" | "manual";
   reason?: string | null;
+  acceptingPatients?: "yes" | "no" | "existing" | "unknown" | null;
+  practiceLocations?: string[];
   checkedAt: Date;
   ttlExpiresAt: Date;
 };
